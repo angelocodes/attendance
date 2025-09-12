@@ -1,0 +1,47 @@
+Error in process_face: This session has ended.
+Error in process_face: Unknown column 'u.first_name' in 'field list'
+Error in process_face: Unknown column 'u.first_name' in 'field list'
+Error in process_face: This session has ended.
+Error in process_face: This session has ended.
+Error in process_face: This session has ended.
+Error in process_face: This session has ended.
+Error in process_face: Student not recognized or not enrolled in this course unit.
+Error in process_face: Student not recognized or not enrolled in this course unit.
+Error in process_face: Student not recognized or not enrolled in this course unit.
+Error in process_face: Student not recognized or not enrolled in this course unit.
+Error in process_image: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'current_time
+            FROM class_sessions csregano
+            WHERE cs....' at line 1
+Error in process_face: You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'current_time
+            FROM class_sessions cs
+            WHERE cs.sessio...' at line 1
+Session expired: session_id=16, now=2025-05-29 15:34:20, end_time=07:59:00
+Error in process_face: This session has ended.
+Invalid face encoding format for student_id: 31
+No enrolled students with valid face encodings for assignment_id: 20
+Error in process_face: No enrolled students with face encodings found.
+No enrolled students with valid face encodings for assignment_id: 20
+Error in process_face: No enrolled students with face encodings found.
+Error in saveAttendance: Invalid session_id selected.
+Error saving attendance: Failed to save attendance: Invalid session_id selected.Session expired: session_id=16, now=2025-05-29 18:15:54, end_time=07:59:00
+Error in process_face: This session has ended.
+Invalid face encoding format for student_id: 31
+Invalid face encoding format for student_id: 31
+Invalid face encoding format for student_id: 31
+Invalid face encoding format for student_id: 31
+Invalid face encoding format for student_id: 31
+Invalid face encoding format for student_id: 31
+No active sessions found for lecturer_id: 30
+No active sessions found for lecturer_id: 30
+[2025-05-30 12:45:40] Error in process_face: Invalid face descriptor data.
+[2025-05-30 12:46:47] Error in process_face: Invalid face descriptor data.
+[2025-05-30 12:48:04] Error in process_face: Invalid face descriptor data.
+[2025-05-30 12:57:48] Error in process_face: Invalid face descriptor data.
+[2025-05-30 13:05:15] Error in process_face: Invalid face descriptor data.
+Error in saveAttendance: Invalid session_id selected.
+Error saving attendance: Failed to save attendance: Invalid session_id selected.[2025-05-31 10:04:04] No active sessions for lecturer_id: 30
+Error in saveAttendance: Invalid session_id selected.
+Error saving attendance: Failed to save attendance: Invalid session_id selected.Error in saveAttendance: Invalid session_id selected.
+Error saving attendance: Failed to save attendance: Invalid session_id selected.[2025-08-30 20:05:17] No active sessions for lecturer_id: 30
+No units found for lecturer_id: 81No units found for lecturer_id: 81[2025-08-31 14:55:49] No active sessions for lecturer_id: 81
+No units found for lecturer_id: 81[2025-08-31 14:55:56] No active sessions for lecturer_id: 81
