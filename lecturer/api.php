@@ -12,14 +12,33 @@ if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'lecturer' || !
 }
 
 $lecturer_id = (int)$_SESSION['user_id'];
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// Handle JSON input from axios
+$input = file_get_contents('php://input');
+$json_data = json_decode($input, true);
+
+if ($json_data) {
+    // JSON request
+    $action = $json_data['action'] ?? '';
+    $_POST = array_merge($_POST, $json_data);
+} else {
+    // Traditional form request
+    $action = $_POST['action'] ?? $_GET['action'] ?? '';
+}
+
+// Debug: Log the received action and data
+error_log("Lecturer API - Received action: '" . $action . "'");
+error_log("Lecturer API - Raw input: " . $input);
+error_log("Lecturer API - JSON data: " . json_encode($json_data));
+error_log("Lecturer API - POST data: " . json_encode($_POST));
+error_log("Lecturer API - GET data: " . json_encode($_GET));
 
 switch ($action) {
     // Get students (optimized: only join student_enrollments when unit_id is provided)
     // Suggested index: CREATE INDEX idx_user_type ON users(user_type);
     case 'get_students':
         $unit_id = intval($_GET['unit_id'] ?? 0);
-        $query = "SELECT u.first_name, u.last_name, u.face_encoding, u.user_id AS student_id FROM users u";
+        $query = "SELECT s.first_name, s.last_name, u.face_encoding, u.user_id AS student_id FROM users u JOIN students s ON u.user_id = s.student_id";
         $params = [];
         $types = '';
         if ($unit_id) {
@@ -49,7 +68,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Missing parameters']);
             exit;
         }
-        $stmt = $conn->prepare("SELECT u.user_id FROM users u JOIN students s ON u.user_id = s.student_id WHERE CONCAT(u.first_name, ' ', u.last_name) = ? AND u.user_type = 'student'");
+        $stmt = $conn->prepare("SELECT u.user_id FROM users u JOIN students s ON u.user_id = s.student_id WHERE CONCAT(s.first_name, ' ', s.last_name) = ? AND u.user_type = 'student'");
         $stmt->bind_param("s", $student_name);
         if (!$stmt->execute()) {
             echo json_encode(['success' => false, 'message' => 'Database error']);
@@ -119,8 +138,31 @@ switch ($action) {
         $start_time = $_POST['start_time'] ?? '';
         $end_time = $_POST['end_time'] ?? '';
         $venue = filter_var($_POST['venue'] ?? '', FILTER_SANITIZE_STRING);
-        if (!$assignment_id || !$session_date || !$start_time || !$end_time || !$venue || strtotime($session_date) < time() || strtotime($start_time) >= strtotime($end_time)) {
-            echo json_encode(['success' => false, 'message' => 'Invalid input or dates']);
+
+        // Debug: Log received parameters and validation
+        error_log("Schedule session - assignment_id: $assignment_id, session_date: $session_date, start_time: $start_time, end_time: $end_time, venue: $venue");
+        error_log("Schedule session - strtotime(session_date): " . strtotime($session_date) . ", time(): " . time());
+        error_log("Schedule session - strtotime(start_time): " . strtotime($start_time) . ", strtotime(end_time): " . strtotime($end_time));
+
+        if (!$assignment_id || !$session_date || !$start_time || !$end_time || !$venue) {
+            error_log("Schedule session - Missing required fields");
+            echo json_encode(['success' => false, 'message' => 'All fields are required']);
+            exit;
+        }
+
+        // Allow sessions for today and future dates
+        $session_date_timestamp = strtotime($session_date . ' 00:00:00');
+        $today_timestamp = strtotime(date('Y-m-d') . ' 00:00:00');
+
+        if ($session_date_timestamp < $today_timestamp) {
+            error_log("Schedule session - Date is in the past: $session_date");
+            echo json_encode(['success' => false, 'message' => 'Session date cannot be in the past']);
+            exit;
+        }
+
+        if (strtotime($start_time) >= strtotime($end_time)) {
+            error_log("Schedule session - Start time is after end time: $start_time >= $end_time");
+            echo json_encode(['success' => false, 'message' => 'Start time must be before end time']);
             exit;
         }
         $stmt = $conn->prepare("SELECT unit_id FROM lecturer_assignments WHERE assignment_id = ? AND lecturer_id = ?");
@@ -162,9 +204,10 @@ switch ($action) {
         header('Content-Disposition: attachment; filename="attendance.csv"');
         $output = fopen('php://output', 'w');
         fputcsv($output, ['Student Name', 'Unit', 'Status', 'Date']);
-        $query = "SELECT CONCAT(u.first_name, ' ', u.last_name) as student_name, cu.unit_name, ar.status, cs.session_date
+        $query = "SELECT CONCAT(s.first_name, ' ', s.last_name) as student_name, cu.unit_name, ar.status, cs.session_date
                   FROM attendance_records ar
                   JOIN users u ON ar.student_id = u.user_id
+                  JOIN students s ON u.user_id = s.student_id
                   JOIN class_sessions cs ON ar.session_id = cs.session_id
                   JOIN course_units cu ON cs.unit_id = cu.unit_id
                   WHERE cs.lecturer_id = ? $where_clause";
@@ -200,9 +243,10 @@ switch ($action) {
             $params[] = $to_date;
             $types .= 'ss';
         }
-        $query = "SELECT u.user_id AS student_id, CONCAT(u.first_name, ' ', u.last_name) as student_name, cu.unit_name, ar.status, cs.session_date, cs.session_id
+        $query = "SELECT u.user_id AS student_id, CONCAT(s.first_name, ' ', s.last_name) as student_name, cu.unit_name, ar.status, cs.session_date, cs.session_id
                   FROM attendance_records ar
                   JOIN users u ON ar.student_id = u.user_id
+                  JOIN students s ON u.user_id = s.student_id
                   JOIN class_sessions cs ON ar.session_id = cs.session_id
                   JOIN course_units cu ON cs.unit_id = cu.unit_id
                   WHERE cs.lecturer_id = ? $where_clause ORDER BY cs.session_date DESC";
@@ -249,32 +293,47 @@ switch ($action) {
 
     // Get scheduled sessions (grouped by unit)
     case 'get_scheduled_sessions':
+        // Debug: Log query parameters
+        error_log("Lecturer API - Querying sessions for lecturer_id: $lecturer_id");
+
         $stmt = $conn->prepare("SELECT cs.session_id, cs.session_date, cs.start_time, cs.end_time, cs.venue, cu.unit_name, cu.unit_id
                                 FROM class_sessions cs JOIN course_units cu ON cs.unit_id = cu.unit_id
                                 WHERE cs.lecturer_id = ? AND cs.session_date >= CURDATE() ORDER BY cu.unit_name, cs.session_date");
         $stmt->bind_param("i", $lecturer_id);
+
         if (!$stmt->execute()) {
+            error_log("Lecturer API - Query execution failed: " . $stmt->error);
             echo json_encode(['success' => false, 'message' => 'Database error']);
             exit;
         }
+
         $res = $stmt->get_result();
         $sessions = [];
+        $rowCount = 0;
+
         while ($row = $res->fetch_assoc()) {
             $unit_name = $row['unit_name'];
             if (!isset($sessions[$unit_name])) $sessions[$unit_name] = [];
             $sessions[$unit_name][] = $row;
+            $rowCount++;
         }
+
+        // Debug: Log detailed results
+        error_log("Lecturer API - Query returned $rowCount rows");
+        error_log("Lecturer API - Sessions found: " . json_encode($sessions));
+
         echo json_encode($sessions);
         break;
 
     // Get my units and enrolled students
     // Suggested index: CREATE INDEX idx_lecturer_units ON lecturer_assignments(lecturer_id);
     case 'get_my_units':
-        $stmt = $conn->prepare("SELECT cu.unit_id, cu.unit_name, GROUP_CONCAT(CONCAT(u.first_name, ' ', u.last_name) SEPARATOR ', ') AS students
+        $stmt = $conn->prepare("SELECT cu.unit_id, cu.unit_name, GROUP_CONCAT(CONCAT(s.first_name, ' ', s.last_name) SEPARATOR ', ') AS students
                                 FROM lecturer_assignments la
                                 JOIN course_units cu ON la.unit_id = cu.unit_id
                                 LEFT JOIN student_enrollments se ON cu.unit_id = se.unit_id
                                 LEFT JOIN users u ON se.student_id = u.user_id
+                                LEFT JOIN students s ON u.user_id = s.student_id
                                 WHERE la.lecturer_id = ? GROUP BY cu.unit_id");
         $stmt->bind_param("i", $lecturer_id);
         if (!$stmt->execute()) {

@@ -263,8 +263,12 @@ $assign_stmt->close();
             videoStream: null,
 
             async switchTab(newTab) {
+                console.log('Switching to tab:', newTab); // Debug: Log tab switching
                 this.tab = newTab;
-                if (newTab === 'face-recognition' || newTab === 'attendance-history') await this.loadScheduledSessions();
+                if (newTab === 'face-recognition' || newTab === 'attendance-history') {
+                    console.log('Loading scheduled sessions for tab:', newTab); // Debug: Log session loading
+                    await this.loadScheduledSessions();
+                }
                 if (newTab === 'attendance-history') await this.loadAttendanceHistory();
                 if (newTab === 'notifications') await this.loadNotifications();
                 if (newTab === 'my-units') await this.loadMyUnits();
@@ -275,9 +279,11 @@ $assign_stmt->close();
                 this.loadingSessions = true;
                 try {
                     const res = await axios.get('api.php?action=get_scheduled_sessions');
+                    console.log('API Response:', res.data); // Debug: Log API response
                     this.scheduledSessions = res.data;
+                    console.log('Scheduled Sessions set to:', this.scheduledSessions); // Debug: Log component data
                 } catch (err) {
-                    console.error(err);
+                    console.error('Error loading sessions:', err);
                     this.historyMsg = 'Error loading sessions';
                     this.historySuccess = false;
                 }
@@ -444,16 +450,56 @@ $assign_stmt->close();
             },
 
             async loadStudents(unit_id) {
-                const res = await axios.get(`api.php?action=get_students&unit_id=${unit_id}`);
-                this.labeledDescriptors = res.data.map(s => {
-                    try {
-                        const descriptors = [new Float32Array(JSON.parse(s.face_encoding))];
-                        return new faceapi.LabeledFaceDescriptors(`${s.first_name} ${s.last_name}`, descriptors);
-                    } catch (err) {
-                        console.error('Invalid face encoding for student:', s.student_id);
-                        return null;
-                    }
-                }).filter(d => d);
+                try {
+                    const res = await axios.get(`api.php?action=get_students&unit_id=${unit_id}`);
+                    console.log('Loading students for unit:', unit_id, 'Response:', res.data);
+
+                    this.labeledDescriptors = res.data.map(s => {
+                        try {
+                            if (!s.face_encoding || s.face_encoding.trim() === '') {
+                                console.warn('Empty face encoding for student:', s.student_id);
+                                return null;
+                            }
+
+                            const parsed = JSON.parse(s.face_encoding);
+                            console.log('Parsed face encoding for', s.student_id, ':', parsed);
+
+                            if (!Array.isArray(parsed) || parsed.length === 0) {
+                                console.warn('Invalid face encoding format for student:', s.student_id);
+                                return null;
+                            }
+
+                            // Ensure we have the right descriptor length (128 for face-api.js)
+                            const descriptors = parsed.map(desc => {
+                                if (Array.isArray(desc) && desc.length === 128) {
+                                    return new Float32Array(desc);
+                                } else if (Array.isArray(desc) && desc.length !== 128) {
+                                    console.warn('Face descriptor wrong length:', desc.length, 'expected 128');
+                                    return null;
+                                }
+                                return new Float32Array(desc);
+                            }).filter(d => d !== null);
+
+                            if (descriptors.length === 0) {
+                                console.warn('No valid descriptors for student:', s.student_id);
+                                return null;
+                            }
+
+                            const label = `${s.first_name} ${s.last_name}`.trim();
+                            console.log('Creating labeled descriptor for:', label, 'with', descriptors.length, 'descriptors');
+                            return new faceapi.LabeledFaceDescriptors(label, descriptors);
+
+                        } catch (err) {
+                            console.error('Error processing face encoding for student:', s.student_id, err);
+                            return null;
+                        }
+                    }).filter(d => d);
+
+                    console.log('Loaded', this.labeledDescriptors.length, 'labeled descriptors');
+                } catch (err) {
+                    console.error('Error loading students:', err);
+                    this.labeledDescriptors = [];
+                }
             },
 
             async selectSession(session) {
@@ -463,39 +509,149 @@ $assign_stmt->close();
 
             async startFaceRecognition(unit_id, session_id) {
                 try {
+                    // Parallel model loading for better performance
+                    console.time('Model Loading');
                     await Promise.all([
                         faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
                     ]);
-                    await this.loadStudents(unit_id);
+                    console.timeEnd('Model Loading');
+
+                    // Load student data in parallel with video setup
+                    console.time('Student Loading');
+                    const studentPromise = this.loadStudents(unit_id);
+
+                    console.time('Video Setup');
                     const video = document.getElementById('video');
-                    this.videoStream = await navigator.mediaDevices.getUserMedia({ video: {} });
-                    video.srcObject = this.videoStream;
+                    const streamPromise = navigator.mediaDevices.getUserMedia({
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            frameRate: { ideal: 30 }
+                        }
+                    });
+
+                    // Wait for both student data and video stream
+                    const [stream] = await Promise.all([streamPromise, studentPromise]);
+                    video.srcObject = stream;
+                    this.videoStream = stream;
+                    console.timeEnd('Video Setup');
+                    console.timeEnd('Student Loading');
                     video.addEventListener('play', () => {
-                        const canvas = faceapi.createCanvasFromMedia(video);
-                        document.body.append(canvas);
-                        const displaySize = { width: video.width, height: video.height };
-                        faceapi.matchDimensions(canvas, displaySize);
-                        const faceMatcher = new faceapi.FaceMatcher(this.labeledDescriptors, 0.6);
-                        this.recognitionInterval = setInterval(async () => {
-                            if (!this.isRecognizing) return;
-                            const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                            const resized = faceapi.resizeResults(detections, displaySize);
-                            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-                            faceapi.draw.drawDetections(canvas, resized);
-                            const detectedStudents = document.getElementById('detected-students');
-                            detectedStudents.innerHTML = '';
-                            resized.forEach(d => {
-                                const bestMatch = faceMatcher.findBestMatch(d.descriptor);
-                                if (bestMatch.label !== 'unknown') {
-                                    const li = document.createElement('li');
-                                    li.textContent = `${bestMatch.label} - Present`;
-                                    detectedStudents.appendChild(li);
-                                    axios.post('api.php', { action: 'mark_attendance', student_name: bestMatch.label, session_id });
-                                }
-                            });
-                        }, 2000);
+                        // Wait for video to have proper dimensions
+                        const checkDimensions = () => {
+                            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                                const canvas = faceapi.createCanvasFromMedia(video);
+                                document.body.append(canvas);
+                                const displaySize = { width: video.videoWidth, height: video.videoHeight };
+                                faceapi.matchDimensions(canvas, displaySize);
+
+                                const faceMatcher = new faceapi.FaceMatcher(this.labeledDescriptors, 0.2);
+                                // Track recognized students to avoid duplicate API calls
+                                const recognizedStudents = new Set();
+
+                                this.recognitionInterval = setInterval(async () => {
+                                    if (!this.isRecognizing) return;
+
+                                    try {
+                                        const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
+                                        const resized = faceapi.resizeResults(detections, displaySize);
+                                        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                                        faceapi.draw.drawDetections(canvas, resized);
+
+                                        const detectedStudents = document.getElementById('detected-students');
+                                        const currentTime = Date.now();
+
+                                        // Clear old detections (older than 30 seconds)
+                                        Array.from(detectedStudents.children).forEach(li => {
+                                            const timestamp = parseInt(li.dataset.timestamp);
+                                            if (currentTime - timestamp > 30000) {
+                                                li.remove();
+                                                const studentName = li.textContent.split(' - ')[0];
+                                                recognizedStudents.delete(studentName);
+                                            }
+                                        });
+
+                                        resized.forEach(d => {
+                                            const bestMatch = faceMatcher.findBestMatch(d.descriptor);
+                                            if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.2) {
+                                                const studentName = bestMatch.label;
+                                                const confidence = 1 - bestMatch.distance;
+
+                                                // Only mark attendance if confidence is 0.8 (80%) or higher
+                                                if (confidence >= 0.8) {
+                                                    // Only mark attendance if not already recognized recently
+                                                    if (!recognizedStudents.has(studentName)) {
+                                                        recognizedStudents.add(studentName);
+
+                                                        // Add to UI with color coding based on confidence
+                                                        const li = document.createElement('li');
+                                                        li.textContent = `${studentName} - Present (Confidence: ${confidence.toFixed(2)})`;
+                                                        li.dataset.timestamp = currentTime;
+
+                                                        // Color coding based on confidence level
+                                                        if (confidence >= 0.9) {
+                                                            li.className = 'text-green-600 font-semibold'; // Excellent (90%+)
+                                                        } else {
+                                                            li.className = 'text-orange-600 font-medium'; // Good (80-89%)
+                                                        }
+
+                                                        detectedStudents.appendChild(li);
+
+                                                        // Mark attendance via API
+                                                        axios.post('api.php', {
+                                                            action: 'mark_attendance',
+                                                            student_name: studentName,
+                                                            session_id: session_id,
+                                                            confidence: confidence
+                                                        }).then(response => {
+                                                            console.log('Attendance marked for:', studentName, 'with confidence:', confidence.toFixed(2), response.data);
+                                                        }).catch(error => {
+                                                            console.error('Error marking attendance:', error);
+                                                            // Remove from UI if API call failed
+                                                            li.remove();
+                                                            recognizedStudents.delete(studentName);
+                                                        });
+                                                    }
+                                                } else {
+                                                    // Low confidence - show in red but don't register
+                                                    if (!recognizedStudents.has(studentName)) {
+                                                        const li = document.createElement('li');
+                                                        li.textContent = `${studentName} - Low Confidence (${confidence.toFixed(2)})`;
+                                                        li.dataset.timestamp = currentTime;
+                                                        li.className = 'text-red-600 font-medium'; // Poor (<80%)
+                                                        detectedStudents.appendChild(li);
+
+                                                        // Auto-remove after 5 seconds
+                                                        setTimeout(() => {
+                                                            if (li.parentNode) {
+                                                                li.remove();
+                                                            }
+                                                        }, 5000);
+
+                                                        console.log(`Low confidence for ${studentName}: ${confidence.toFixed(2)} (below 0.8 threshold - not registered)`);
+                                                    }
+                                                }
+                                            }
+                                        });
+
+                                        // Update status
+                                        this.faceError = `Detecting... Found ${resized.length} face(s)`;
+
+                                    } catch (error) {
+                                        console.error('Face recognition error:', error);
+                                        this.faceError = 'Face recognition error: ' + error.message;
+                                    }
+                                }, 1000); // Check every 1 second for better responsiveness
+                            } else {
+                                // Video dimensions not ready, check again
+                                setTimeout(checkDimensions, 100);
+                            }
+                        };
+
+                        // Start checking dimensions
+                        checkDimensions();
                     });
                 } catch (err) {
                     this.faceError = 'Error starting face recognition: ' + (err.message || 'Unknown error');
@@ -515,8 +671,12 @@ $assign_stmt->close();
             },
 
             init() {
+                console.log('Alpine.js dashboard component initialized'); // Debug: Component init
                 this.switchTab('dashboard');
                 setInterval(() => this.loadNotifications(), 30000);
+
+                // Expose switchTab function globally for navbar
+                window.switchTab = (tabName) => this.switchTab(tabName);
             }
         }));
     });
