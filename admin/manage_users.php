@@ -516,7 +516,7 @@ $result = $stmt->get_result();
                                         class="w-full p-2 rounded border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                                 </div>
                                 <div>
-                                    <labelirty of Nairobi for="phone_number-<?= $user['user_id'] ?>" class="block mb-1 font-medium">Phone Number</label>
+                                    <label for="phone_number-<?= $user['user_id'] ?>" class="block mb-1 font-medium">Phone Number</label>
                                     <input type="text" name="phone_number" id="phone_number-<?= $user['user_id'] ?>" value="<?= htmlspecialchars($user['phone_number']) ?>"
                                         class="w-full p-2 rounded border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                                 </div>

@@ -215,8 +215,8 @@ switch ($action) {
         $stmt->bind_param($types, ...$params);
         if (!$stmt->execute()) {
             fclose($output);
-            echo json_encode(['success' => false, 'message' => 'Database error']);
-            exit;
+            http_response_code(500);
+            exit('Database error');
         }
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {

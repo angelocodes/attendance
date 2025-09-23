@@ -23,13 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lecturer_id = intval($_POST['lecturer_id']);
     $unit_id = intval($_POST['unit_id']);
     $semester = intval($_POST['semester']);
-    $academic_year = intval($_POST['academic_year']);
+    $academic_year = $_POST['academic_year'];
     $allow_multiple = isset($_POST['allow_multiple']) ? true : false;
 
     // Duplicate check
-    $dupCheck = $conn->prepare("SELECT * FROM lecturer_assignments 
-                                WHERE unit_id=? AND semester=? AND academic_year=?");
-    $dupCheck->bind_param("iii", $unit_id, $semester, $academic_year);
+    $dupCheck = $conn->prepare("SELECT * FROM lecturer_assignments
+                                WHERE school_id=? AND unit_id=? AND semester=? AND academic_year=?");
+    $dupCheck->bind_param("isis", $school_id, $unit_id, $semester, $academic_year);
     $dupCheck->execute();
     $dupResult = $dupCheck->get_result();
 
@@ -39,13 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($message === "") {
         if ($assignment_id) {
-            $stmt = $conn->prepare("UPDATE lecturer_assignments 
-                                    SET school_id=?, lecturer_id=?, unit_id=?, semester=?, academic_year=? 
+            $stmt = $conn->prepare("UPDATE lecturer_assignments
+                                    SET school_id=?, lecturer_id=?, unit_id=?, semester=?, academic_year=?
                                     WHERE assignment_id=?");
             $stmt->bind_param("iiiisi", $school_id, $lecturer_id, $unit_id, $semester, $academic_year, $assignment_id);
         } else {
-            $stmt = $conn->prepare("INSERT INTO lecturer_assignments 
-                                    (school_id, lecturer_id, unit_id, semester, academic_year) 
+            $stmt = $conn->prepare("INSERT INTO lecturer_assignments
+                                    (school_id, lecturer_id, unit_id, semester, academic_year)
                                     VALUES (?, ?, ?, ?, ?)");
             $stmt->bind_param("iiiis", $school_id, $lecturer_id, $unit_id, $semester, $academic_year);
         }
@@ -112,6 +112,20 @@ $filter_course = $_GET['course'] ?? '';
         });
     }
     </script>
+    <script>
+    // Load data for edit mode
+    <?php if (isset($edit)): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById("school_id").value = "<?= $edit['school_id'] ?>";
+        loadLecturersAndCourses();
+        // Set lecturer and unit after loading
+        setTimeout(() => {
+            document.getElementById("lecturer_id").value = "<?= $edit['lecturer_id'] ?>";
+            document.getElementById("unit_id").value = "<?= $edit['unit_id'] ?>";
+        }, 500);
+    });
+    <?php endif; ?>
+    </script>
 </head>
 <body class="bg-[#0f172a] text-white min-h-screen p-6 font-sans">
     <div class="max-w-7xl mx-auto">
@@ -133,7 +147,7 @@ $filter_course = $_GET['course'] ?? '';
                             class="w-full bg-[#334155] border border-[#475569] p-2 rounded text-white" required>
                         <option value="">-- Select School --</option>
                         <?php while($row = $schools->fetch_assoc()): ?>
-                            <option value="<?= $row['school_id'] ?>" 
+                            <option value="<?= $row['school_id'] ?>"
                                 <?= isset($edit) && $edit['school_id'] == $row['school_id'] ? 'selected' : '' ?>>
                                 <?= $row['school_name'] ?>
                             </option>
@@ -153,11 +167,11 @@ $filter_course = $_GET['course'] ?? '';
                 <!-- Academic Year -->
                 <div>
                     <label class="block mb-1 text-yellow-300 font-semibold">Academic Year</label>
-                    <select name="academic_year" 
+                    <select name="academic_year"
                             class="w-full bg-[#334155] border border-[#475569] p-2 rounded text-white" required>
                         <?php while($row = $years->fetch_assoc()): ?>
-                            <option value="<?= $row['academic_year_id'] ?>" 
-                                <?= isset($edit) && $edit['academic_year'] == $row['academic_year_id'] ? 'selected' : '' ?>>
+                            <option value="<?= $row['description'] ?>"
+                                <?= isset($edit) && $edit['academic_year'] == $row['description'] ? 'selected' : '' ?>>
                                 <?= $row['description'] ?>
                             </option>
                         <?php endwhile; ?>
@@ -260,17 +274,16 @@ $filter_course = $_GET['course'] ?? '';
                 <tbody>
                     <?php
                     $query = "
-                        SELECT la.assignment_id, 
+                        SELECT la.assignment_id,
                                s.school_name,
                                CONCAT(l.first_name, ' ', l.last_name) AS lecturer_name,
-                               u.unit_name, 
-                               la.semester, 
-                               ay.description AS year_name
+                               u.unit_name,
+                               la.semester,
+                               la.academic_year AS year_name
                         FROM lecturer_assignments la
+                        JOIN schools s ON la.school_id = s.school_id
                         JOIN lecturers l ON la.lecturer_id = l.lecturer_id
                         JOIN course_units u ON la.unit_id = u.unit_id
-                        JOIN academic_years ay ON la.academic_year = ay.academic_year_id
-                        JOIN schools s ON la.school_id = s.school_id
                         JOIN courses c ON u.course_id = c.course_id
                         JOIN departments d ON c.department_id = d.department_id
                         WHERE 1=1

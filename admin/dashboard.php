@@ -44,10 +44,12 @@ try {
     while ($row = $res->fetch_assoc()) $stats['recent_activities'][] = $row;
 
     // Notifications
-    $note_sql = "SELECT message, created_at, is_read FROM notifications 
-                 WHERE user_id = $admin_id OR user_id IS NULL 
-                 ORDER BY created_at DESC LIMIT 5";
-    $res = $conn->query($note_sql);
+    $note_stmt = $conn->prepare("SELECT message, created_at, is_read FROM notifications
+                                 WHERE user_id = ? OR user_id IS NULL
+                                 ORDER BY created_at DESC LIMIT 5");
+    $note_stmt->bind_param("i", $admin_id);
+    $note_stmt->execute();
+    $res = $note_stmt->get_result();
     while ($row = $res->fetch_assoc()) $stats['notifications'][] = $row;
 
 } catch (Exception $e) {

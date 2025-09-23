@@ -1,19 +1,19 @@
 <?php
 require_once "../db.php";
 
-if (isset($_POST['school_id'])) {
-    $school_id = intval($_POST['school_id']);
-    $query = "SELECT course_id, course_name FROM courses WHERE school_id = ? ORDER BY course_name";
+if (isset($_GET['department_id'])) {
+    $department_id = intval($_GET['department_id']);
+    $query = "SELECT course_id, course_name FROM courses WHERE department_id = ? ORDER BY course_name";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $school_id);
+    $stmt->bind_param("i", $department_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $options = '';
+    $options = [];
     while ($course = $result->fetch_assoc()) {
-        $options .= "<option value='{$course['course_id']}'>" . htmlspecialchars($course['course_name']) . "</option>";
+        $options[] = ['course_id' => $course['course_id'], 'course_name' => $course['course_name']];
     }
-    echo $options;
+    echo json_encode($options);
     $stmt->close();
 }
 ?>
