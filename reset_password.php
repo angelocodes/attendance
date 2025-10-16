@@ -30,10 +30,17 @@ if (empty($token)) {
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-        // For demonstration, let's assume we're resetting for a test user
-        // In real implementation, you'd look up user_id from the token
-        $stmt = $conn->prepare("UPDATE users SET password = ? WHERE email = 'admin@gmail.com'");
-        $stmt->bind_param("s", $hashedPassword);
+        // Validate token and get email from session (for demonstration)
+        // In production, you'd validate from a password_resets table
+        if (!isset($_SESSION['reset_token']) || !isset($_SESSION['reset_email']) ||
+            $_SESSION['reset_token'] !== $token ||
+            strtotime($_SESSION['reset_expires']) < time()) {
+            $message = "Invalid or expired reset token. Please request a new password reset.";
+            $messageType = 'error';
+        } else {
+            $resetEmail = $_SESSION['reset_email'];
+            $stmt = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
+            $stmt->bind_param("ss", $hashedPassword, $resetEmail);
 
         if ($stmt->execute()) {
             $message = "Password reset successful! You can now login with your new password.";

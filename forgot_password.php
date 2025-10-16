@@ -1,5 +1,9 @@
 <?php
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 include 'db.php';
+require 'vendor/autoload.php'; // Include PHPMailer
 
 $message = '';
 $messageType = 'error';
@@ -24,16 +28,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = $result->fetch_assoc();
             $user_id = $user['user_id'];
 
-            // Generate token and expiry - for now we'll show it directly
+            // Generate token and expiry
             $token = bin2hex(random_bytes(32));
             $expires = date("Y-m-d H:i:s", strtotime('+1 hour'));
 
-            // Since there's no password_resets table, we'll implement a simple reset via reset_password.php
-            // You may want to add a password_resets table later for proper email-based reset
+            // Store token in password_resets table (we'll create this temporarily for the session)
+            // For now, since no table exists, we'll send the email directly
 
-            $message = "Password reset token generated. Use token: <strong>$token</strong> on the reset page. This token expires in 1 hour.";
-            $message .= "<br><br><a href='reset_password.php?token=$token' class='underline font-bold'>Go to Reset Password Page</a>";
-            $messageType = 'success';
+            // Send password reset email using PHPMailer
+            $mail = new PHPMailer(true);
+
+            try {
+                // Server settings
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com'; // Replace with your SMTP server
+                $mail->SMTPAuth = true;
+                $mail->Username = 'your-email@gmail.com'; // Replace with your email
+                $mail->Password = 'your-app-password'; // Replace with app password
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+
+                // Recipients
+                $mail->setFrom('your-email@gmail.com', 'Attendance System'); // Replace with your email
+                $mail->addAddress($email);
+
+                // Content
+                $reset_link = "http://" . $_SERVER['HTTP_HOST'] . "/attendance1/reset_password.php?token=" . $token;
+
+                $mail->isHTML(true);
+                $mail->Subject = 'Password Reset Request - Attendance System';
+                $mail->Body = "
+                    <h3>Password Reset Request</h3>
+                    <p>You have requested to reset your password for the Attendance System.</p>
+                    <p>Please click the link below to reset your password:</p>
+                    <p><a href='$reset_link' style='background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Reset Password</a></p>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p>$reset_link</p>
+                    <p>This link will expire in 1 hour.</p>
+                    <p>If you didn't request this reset, please ignore this email.</p>
+                    <br>
+                    <p>Best regards,<br>Attendance System Team</p>
+                ";
+                $mail->AltBody = "Password Reset Request\n\nYou have requested to reset your password.\n\nPlease visit: $reset_link\n\nThis link will expire in 1 hour.";
+
+                $mail->send();
+
+                // Store the token temporarily in session for demonstration
+                // In production, you'd store this in a password_resets table
+                $_SESSION['reset_token'] = $token;
+                $_SESSION['reset_email'] = $email;
+                $_SESSION['reset_expires'] = $expires;
+
+                $message = "Password reset email sent! Please check your email for instructions. The reset link will expire in 1 hour.";
+                $messageType = 'success';
+
+            } catch (Exception $e) {
+                $message = "Failed to send email: " . $mail->ErrorInfo;
+                $messageType = 'error';
+            }
         } else {
             $message = "No user found with that email address.";
             $messageType = 'error';
