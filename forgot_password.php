@@ -24,37 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = $result->fetch_assoc();
             $user_id = $user['user_id'];
 
-            // Get user full name from appropriate table (student or lecturer)
-            $userStmt = $conn->prepare("
-                SELECT CONCAT(first_name, ' ', last_name) as full_name
-                FROM students WHERE user_id = ?
-                UNION
-                SELECT CONCAT(first_name, ' ', last_name) as full_name
-                FROM lecturers WHERE user_id = ?
-                LIMIT 1
-            ");
-            $userStmt->bind_param("ii", $user_id, $user_id);
-            $userStmt->execute();
-            $userResult = $userStmt->get_result();
+            // Generate token and expiry - for now we'll show it directly
+            $token = bin2hex(random_bytes(32));
+            $expires = date("Y-m-d H:i:s", strtotime('+1 hour'));
 
-            if ($userResult->num_rows > 0) {
-                $userData = $userResult->fetch_assoc();
+            // Since there's no password_resets table, we'll implement a simple reset via reset_password.php
+            // You may want to add a password_resets table later for proper email-based reset
 
-                // Generate token and expiry - for now we'll show it directly
-                $token = bin2hex(random_bytes(32));
-                $expires = date("Y-m-d H:i:s", strtotime('+1 hour'));
-
-                // Since there's no password_resets table, we'll implement a simple reset via reset_password.php
-                // You may want to add a password_resets table later for proper email-based reset
-
-                $message = "Password reset token generated. Use token: <strong>$token</strong> on the reset page. This token expires in 1 hour.";
-                $message .= "<br><br><a href='reset_password.php?token=$token' class='underline font-bold'>Go to Reset Password Page</a>";
-                $messageType = 'success';
-            } else {
-                $message = "User account not found.";
-                $messageType = 'error';
-            }
-            $userStmt->close();
+            $message = "Password reset token generated. Use token: <strong>$token</strong> on the reset page. This token expires in 1 hour.";
+            $message .= "<br><br><a href='reset_password.php?token=$token' class='underline font-bold'>Go to Reset Password Page</a>";
+            $messageType = 'success';
         } else {
             $message = "No user found with that email address.";
             $messageType = 'error';
