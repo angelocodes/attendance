@@ -1,4 +1,5 @@
 <?php
+session_start();
 include 'db.php';
 
 $message = '';
@@ -30,29 +31,41 @@ if (empty($token)) {
 
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-        // Validate token and get email from session (for demonstration)
-        // In production, you'd validate from a password_resets table
-        if (!isset($_SESSION['reset_token']) || !isset($_SESSION['reset_email']) ||
-            $_SESSION['reset_token'] !== $token ||
-            strtotime($_SESSION['reset_expires']) < time()) {
+        // Validate token from password_resets table
+        $tokenStmt = $conn->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() AND used = 0");
+        $tokenStmt->bind_param("s", $token);
+        $tokenStmt->execute();
+        $tokenResult = $tokenStmt->get_result();
+
+        if ($tokenResult->num_rows === 0) {
             $message = "Invalid or expired reset token. Please request a new password reset.";
             $messageType = 'error';
         } else {
-            $resetEmail = $_SESSION['reset_email'];
+            $tokenData = $tokenResult->fetch_assoc();
+            $resetEmail = $tokenData['email'];
+
+            // Update user password
             $stmt = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
             $stmt->bind_param("ss", $hashedPassword, $resetEmail);
 
-        if ($stmt->execute()) {
-            $message = "Password reset successful! You can now login with your new password.";
-            $message .= "<br><br><a href='login.php' class='underline font-bold'>Go to Login Page</a>";
-            $messageType = 'success';
-        } else {
-            $message = "Failed to update password. Please try again.";
-            $messageType = 'error';
-        }
+            if ($stmt->execute()) {
+                // Mark token as used to prevent reuse
+                $updateStmt = $conn->prepare("UPDATE password_resets SET used = 1 WHERE token = ?");
+                $updateStmt->bind_param("s", $token);
+                $updateStmt->execute();
+                $updateStmt->close();
 
-        $stmt->close();
-    }
+                $message = "Password reset successful! You can now login with your new password.";
+                $message .= "<br><br><a href='login.php' class='underline font-bold'>Go to Login Page</a>";
+                $messageType = 'success';
+            } else {
+                $message = "Failed to update password. Please try again.";
+                $messageType = 'error';
+            }
+
+            $stmt->close();
+        }
+        $tokenStmt->close();
 }
 ?>
 

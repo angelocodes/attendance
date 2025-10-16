@@ -3,6 +3,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 include 'db.php';
+session_start(); // Start session for storing tokens
 require 'vendor/autoload.php'; // Include PHPMailer
 
 $message = '';
@@ -73,11 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $mail->send();
 
-                // Store the token temporarily in session for demonstration
-                // In production, you'd store this in a password_resets table
-                $_SESSION['reset_token'] = $token;
-                $_SESSION['reset_email'] = $email;
-                $_SESSION['reset_expires'] = $expires;
+                // Store token in password_resets table for security
+                $resetStmt = $conn->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)");
+                $resetStmt->bind_param("sss", $email, $token, $expires);
+                $resetStmt->execute();
+                $resetStmt->close();
 
                 $message = "Password reset email sent! Please check your email for instructions. The reset link will expire in 1 hour.";
                 $messageType = 'success';
