@@ -42,15 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             try {
                 // Server settings
                 $mail->isSMTP();
-                $mail->Host = 'smtp.gmail.com'; // Replace with your SMTP server
+                $mail->Host = 'smtp.gmail.com';
                 $mail->SMTPAuth = true;
-                $mail->Username = 'deliveredmilly@gmail.com'; // Your Gmail address
-                $mail->Password = 'Sept@2024@'; // Your Gmail app password
+                $mail->Username = 'deliveredmilly@gmail.com';
+                $mail->Password = 'Sept@2024@';
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
 
                 // Recipients
-                $mail->setFrom('deliveredmilly@gmail.com', 'Attendance System'); // Your Gmail address
+                $mail->setFrom('deliveredmilly@gmail.com', 'Attendance System');
                 $mail->addAddress($email);
 
                 // Content
