@@ -47,33 +47,33 @@ $assign_stmt->close();
         .transition-all { transition: all 0.3s ease; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800" x-data="dashboard">
+<body class="bg-gray-900 text-white" x-data="dashboard">
     <?php include 'navbar.php'; ?>
 
     <main class="container mx-auto flex justify-center pt-32">
         <div class="w-full max-w-4xl">
             <!-- Dashboard Cards -->
             <div x-show="tab === 'dashboard'" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6 animate__animated animate__fadeIn">
-                <div class="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-all">
-                    <h2 class="text-lg font-semibold mb-2">Pending Notifications</h2>
-                    <p class="text-3xl font-bold" x-text="notificationCount"></p>
+                <div class="bg-gray-800 shadow rounded-lg p-6 hover:shadow-lg transition-all border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-2 text-yellow-400">Pending Notifications</h2>
+                    <p class="text-3xl font-bold text-white" x-text="notificationCount"></p>
                 </div>
-                <div class="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-all">
-                    <h2 class="text-lg font-semibold mb-2">Upcoming Sessions</h2>
-                    <p class="text-3xl font-bold" x-text="Object.values(scheduledSessions).flat().length"></p>
+                <div class="bg-gray-800 shadow rounded-lg p-6 hover:shadow-lg transition-all border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-2 text-yellow-400">Upcoming Sessions</h2>
+                    <p class="text-3xl font-bold text-white" x-text="Object.values(scheduledSessions).flat().length"></p>
                 </div>
-                <div class="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-all">
-                    <h2 class="text-lg font-semibold mb-2">My Units</h2>
-                    <p class="text-3xl font-bold" x-text="myUnits.length"></p>
+                <div class="bg-gray-800 shadow rounded-lg p-6 hover:shadow-lg transition-all border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-2 text-yellow-400">My Units</h2>
+                    <p class="text-3xl font-bold text-white" x-text="myUnits.length"></p>
                 </div>
-                <div class="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-all">
-                    <h2 class="text-lg font-semibold mb-2">Attendance Today</h2>
-                    <p class="text-3xl font-bold" x-text="attendanceHistory.filter(h => h.session_date === new Date().toISOString().split('T')[0]).length"></p>
+                <div class="bg-gray-800 shadow rounded-lg p-6 hover:shadow-lg transition-all border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-2 text-yellow-400">Attendance Today</h2>
+                    <p class="text-3xl font-bold text-white" x-text="attendanceHistory.filter(h => h.session_date === new Date().toISOString().split('T')[0]).length"></p>
                 </div>
             </div>
 
             <!-- Tabs -->
-            <div class="bg-white shadow rounded-lg p-6 animate__animated animate__fadeIn">
+            <div class="bg-gray-800 shadow rounded-lg p-6 animate__animated animate__fadeIn border border-gray-700">
                 <div class="flex space-x-4 border-b mb-4 overflow-x-auto">
                     <button class="pb-2 border-b-2 whitespace-nowrap" :class="{'border-theme text-theme font-bold': tab === 'dashboard'}" @click="switchTab('dashboard')">Dashboard</button>
                     <button class="pb-2 border-b-2 whitespace-nowrap" :class="{'border-theme text-theme font-bold': tab === 'face-recognition'}" @click="switchTab('face-recognition')">Face Recognition</button>
@@ -89,13 +89,13 @@ $assign_stmt->close();
                     <h2 class="text-xl font-semibold mb-4 text-center">Live Face Recognition Attendance</h2>
                     <div x-show="loadingSessions" class="text-center py-4">Loading sessions...</div>
                     <div x-show="!loadingSessions && !selectedSession" class="max-w-lg mx-auto">
-                        <h3 class="font-semibold mb-2">Select a Scheduled Session</h3>
+                        <h3 class="font-semibold mb-2 text-white">Select a Scheduled Session</h3>
                         <template x-for="(sessions, unit_name) in scheduledSessions">
                             <div class="mb-4">
-                                <h4 class="text-lg font-medium" x-text="unit_name"></h4>
+                                <h4 class="text-lg font-medium text-white" x-text="unit_name"></h4>
                                 <ul class="space-y-2">
                                     <template x-for="session in sessions">
-                                        <li class="p-2 border rounded cursor-pointer hover:bg-gray-100 animate__animated animate__pulse" @click="selectSession(session)">
+                                        <li class="p-2 border border-gray-600 rounded cursor-pointer hover:bg-gray-700 animate__animated animate__pulse text-white" @click="selectSession(session)">
                                             <p x-text="`${session.session_date} | ${session.start_time} - ${session.end_time} | Venue: ${session.venue}`"></p>
                                         </li>
                                     </template>
@@ -113,8 +113,8 @@ $assign_stmt->close();
                             <p class="mt-2 text-gray-500 text-center" x-text="faceError || 'Webcam live feed detecting students...'"></p>
                         </div>
                         <div>
-                            <h3 class="font-semibold mb-2 text-center">Detected Students</h3>
-                            <ul id="detected-students" class="list-disc pl-6 text-gray-700 space-y-2"></ul>
+                            <h3 class="font-semibold mb-2 text-center text-white">Detected Students</h3>
+                            <ul id="detected-students" class="list-disc pl-6 text-white space-y-2"></ul>
                         </div>
                     </div>
                 </div>
@@ -123,16 +123,16 @@ $assign_stmt->close();
                 <div x-show="tab === 'schedule-session'" class="transition-all max-w-lg mx-auto animate__animated animate__fadeIn">
                     <h2 class="text-xl font-semibold mb-4 text-center">Schedule New Session</h2>
                     <form @submit.prevent="scheduleSession" class="space-y-4">
-                        <select x-model="schedule.assignment_id" required class="w-full p-2 border rounded focus:ring-theme">
+                        <select x-model="schedule.assignment_id" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded focus:ring-theme">
                             <option value="">Select Unit</option>
                             <?php foreach ($assignments as $a): ?>
                                 <option value="<?= $a['assignment_id'] ?>"><?= htmlspecialchars($a['unit_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <input type="date" x-model="schedule.session_date" required class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="time" x-model="schedule.start_time" required class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="time" x-model="schedule.end_time" required class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="text" x-model="schedule.venue" placeholder="Venue" required class="w-full p-2 border rounded focus:ring-theme" />
+                        <input type="date" x-model="schedule.session_date" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded focus:ring-theme" />
+                        <input type="time" x-model="schedule.start_time" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded focus:ring-theme" />
+                        <input type="time" x-model="schedule.end_time" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white rounded focus:ring-theme" />
+                        <input type="text" x-model="schedule.venue" placeholder="Venue" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 rounded focus:ring-theme" />
                         <button type="submit" class="w-full px-4 py-2 bg-theme text-white rounded hover:bg-opacity-90 animate__animated animate__pulse" :disabled="loadingSchedule">Schedule</button>
                     </form>
                     <p x-text="scheduleMsg" class="mt-2 text-center" :class="{'text-green-600': scheduleSuccess, 'text-red-600': !scheduleSuccess}"></p>
@@ -142,7 +142,7 @@ $assign_stmt->close();
                 <div x-show="tab === 'attendance-history'" class="transition-all animate__animated animate__fadeIn">
                     <h2 class="text-xl font-semibold mb-4 text-center">Attendance History</h2>
                     <div class="mb-4 flex flex-col md:flex-row md:space-x-4 space-y-2 md:space-y-0 items-center">
-                        <select x-model="selectedSessionId" @change="loadAttendanceHistory" class="w-full md:w-1/2 p-2 border rounded focus:ring-theme">
+                        <select x-model="selectedSessionId" @change="loadAttendanceHistory" class="w-full md:w-1/2 p-2 border border-gray-600 bg-gray-700 text-white rounded focus:ring-theme">
                             <option value="">All Sessions</option>
                             <template x-for="(sessions, unit_name) in scheduledSessions">
                                 <optgroup :label="unit_name">
@@ -153,24 +153,24 @@ $assign_stmt->close();
                             </template>
                         </select>
                         <div class="flex space-x-2">
-                            <input type="date" x-model="historyFromDate" class="p-2 border rounded">
-                            <input type="date" x-model="historyToDate" class="p-2 border rounded">
+                        <input type="date" x-model="historyFromDate" class="p-2 border border-gray-600 bg-gray-700 text-white rounded">
+                        <input type="date" x-model="historyToDate" class="p-2 border border-gray-600 bg-gray-700 text-white rounded">
                             <button @click="loadAttendanceHistory" class="px-4 py-2 bg-theme text-white rounded hover:bg-opacity-90 animate__animated animate__pulse">Filter</button>
                             <button @click="exportAttendance" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 animate__animated animate__pulse">Export CSV</button>
                         </div>
                     </div>
                     <div x-show="loadingHistory" class="text-center py-4">Loading...</div>
-                    <table x-show="!loadingHistory" class="min-w-full divide-y divide-gray-300">
-                        <thead class="bg-gray-200">
+                    <table x-show="!loadingHistory" class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left">Mark</th>
-                                <th class="px-6 py-3 text-left">Student</th>
-                                <th class="px-6 py-3 text-left">Unit</th>
-                                <th class="px-6 py-3 text-left">Status</th>
-                                <th class="px-6 py-3 text-left">Date</th>
+                                <th class="px-6 py-3 text-left text-white">Mark</th>
+                                <th class="px-6 py-3 text-left text-white">Student</th>
+                                <th class="px-6 py-3 text-left text-white">Unit</th>
+                                <th class="px-6 py-3 text-left text-white">Status</th>
+                                <th class="px-6 py-3 text-left text-white">Date</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200" x-html="historyTableHtml"></tbody>
+                        <tbody class="divide-y divide-gray-700" x-html="historyTableHtml"></tbody>
                     </table>
                     <p x-text="historyMsg" class="mt-2 text-center" :class="{'text-green-600': historySuccess, 'text-red-600': !historySuccess}"></p>
                 </div>
@@ -181,11 +181,11 @@ $assign_stmt->close();
                     <div x-show="loadingMyUnits" class="text-center py-4">Loading...</div>
                     <div x-show="!loadingMyUnits" class="space-y-4">
                         <template x-for="unit in myUnits">
-                            <div class="p-4 border rounded animate__animated animate__bounceIn">
-                                <h3 class="font-semibold mb-2 cursor-pointer" @click="unit.expanded = !unit.expanded" x-text="unit.unit_name"></h3>
+                            <div class="p-4 border border-gray-600 rounded animate__animated animate__bounceIn bg-gray-800">
+                                <h3 class="font-semibold mb-2 cursor-pointer text-white" @click="unit.expanded = !unit.expanded" x-text="unit.unit_name"></h3>
                                 <div x-show="unit.expanded">
-                                    <p class="text-gray-600">Enrolled Students:</p>
-                                    <p x-text="unit.students || 'No students enrolled'"></p>
+                                    <p class="text-gray-300">Enrolled Students:</p>
+                                    <p class="text-white" x-text="unit.students || 'No students enrolled'"></p>
                                 </div>
                             </div>
                         </template>
@@ -197,13 +197,13 @@ $assign_stmt->close();
                     <h2 class="text-xl font-semibold mb-4 text-center">My Profile</h2>
                     <div x-show="loadingProfile" class="text-center py-4">Loading...</div>
                     <form x-show="!loadingProfile" @submit.prevent="updateProfile" class="space-y-4">
-                        <input type="email" x-model="profile.email" placeholder="Email" required class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="text" x-model="profile.phone_number" placeholder="Phone Number" required class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="password" x-model="profile.password" placeholder="New Password (leave blank to keep current)" class="w-full p-2 border rounded focus:ring-theme" />
-                        <input type="password" x-model="profile.password_confirm" placeholder="Confirm New Password" class="w-full p-2 border rounded focus:ring-theme" />
-                        <p class="text-gray-600">Username: <span x-text="profile.username"></span></p>
-                        <p class="text-gray-600">Staff Number: <span x-text="profile.staff_number"></span></p>
-                        <p class="text-gray-600">Rank: <span x-text="profile.rank"></span></p>
+                        <input type="email" x-model="profile.email" placeholder="Email" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 rounded focus:ring-theme" />
+                        <input type="text" x-model="profile.phone_number" placeholder="Phone Number" required class="w-full p-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 rounded focus:ring-theme" />
+                        <input type="password" x-model="profile.password" placeholder="New Password (leave blank to keep current)" class="w-full p-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 rounded focus:ring-theme" />
+                        <input type="password" x-model="profile.password_confirm" placeholder="Confirm New Password" class="w-full p-2 border border-gray-600 bg-gray-700 text-white placeholder-gray-400 rounded focus:ring-theme" />
+                        <p class="text-gray-300">Username: <span class="text-white" x-text="profile.username"></span></p>
+                        <p class="text-gray-300">Staff Number: <span class="text-white" x-text="profile.staff_number"></span></p>
+                        <p class="text-gray-300">Rank: <span class="text-white" x-text="profile.rank"></span></p>
                         <button type="submit" class="w-full px-4 py-2 bg-theme text-white rounded hover:bg-opacity-90 animate__animated animate__pulse" :disabled="loadingUpdateProfile">Update</button>
                     </form>
                     <p x-text="profileMsg" class="mt-2 text-center" :class="{'text-green-600': profileSuccess, 'text-red-600': !profileSuccess}"></p>
@@ -215,9 +215,9 @@ $assign_stmt->close();
                     <div x-show="loadingNotifications" class="text-center py-4">Loading...</div>
                     <ul class="space-y-4" x-show="!loadingNotifications">
                         <template x-for="notif in notifications">
-                            <li class="p-4 border rounded bg-gray-50 hover:bg-gray-100 transition-all cursor-pointer animate__animated animate__bounceIn" @click="markRead(notif.notification_id)" :class="{'opacity-50': notif.is_read}">
-                                <p x-text="notif.message"></p>
-                                <p class="text-xs text-gray-400" x-text="notif.created_at"></p>
+                            <li class="p-4 border border-gray-600 rounded bg-gray-800 hover:bg-gray-700 transition-all cursor-pointer animate__animated animate__bounceIn" @click="markRead(notif.notification_id)" :class="{'opacity-50': notif.is_read}">
+                                <p class="text-white" x-text="notif.message"></p>
+                                <p class="text-xs text-gray-300" x-text="notif.created_at"></p>
                             </li>
                         </template>
                     </ul>
@@ -378,13 +378,13 @@ $assign_stmt->close();
                     this.attendanceHistory = res.data;
                     this.historyTableHtml = res.data.map(h => `
                         <tr class="animate__animated animate__bounceIn">
-                            <td class="px-6 py-3">
-                                <input type="checkbox" ${h.status === 'Present' ? 'checked' : ''} @change="markManualAttendance(${h.student_id}, ${h.session_id}, $event.target.checked)" :disabled="!selectedSessionId">
+                            <td class="px-6 py-3 text-white">
+                                <input type="checkbox" ${h.status === 'Present' ? 'checked' : ''} @change="markManualAttendance(${h.student_id}, ${h.session_id}, $event.target.checked)" :disabled="!selectedSessionId" class="w-4 h-4 text-gray-600 bg-gray-100 border-gray-300 rounded">
                             </td>
-                            <td class="px-6 py-3">${h.student_name}</td>
-                            <td class="px-6 py-3">${h.unit_name}</td>
-                            <td class="px-6 py-3">${h.status}</td>
-                            <td class="px-6 py-3">${h.session_date}</td>
+                            <td class="px-6 py-3 text-white">${h.student_name}</td>
+                            <td class="px-6 py-3 text-white">${h.unit_name}</td>
+                            <td class="px-6 py-3 text-white">${h.status}</td>
+                            <td class="px-6 py-3 text-white">${h.session_date}</td>
                         </tr>
                     `).join('');
                 } catch (err) {

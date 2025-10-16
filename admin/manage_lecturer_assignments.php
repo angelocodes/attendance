@@ -91,7 +91,16 @@ $filter_course = $_GET['course'] ?? '';
         unitSelect.innerHTML = "<option>Loading...</option>";
 
         const response = await fetch("load_school_data.php?school_id=" + schoolId);
+        if (!response.ok) {
+            alert("Failed to load data: " + (await response.text()));
+            return;
+        }
         const data = await response.json();
+
+        if (data.error) {
+            alert("Error loading data: " + data.error);
+            return;
+        }
 
         // Populate lecturers
         lecturerSelect.innerHTML = "";

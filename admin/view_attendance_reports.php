@@ -1,10 +1,12 @@
 <?php
 include 'admin_navbar.php';
 require_once '../db.php';
-// PDF generation - optional, will be disabled if TCPDF is not available
+
+
+// PDF generation - optional, will be disabled if DomPDF is not available
 $tcpdf_available = false;
-if (file_exists('../vendor/tecnickcom/tcpdf/tcpdf.php')) {
-    require_once '../vendor/tecnickcom/tcpdf/tcpdf.php';
+require_once '../vendor/autoload.php';
+if (class_exists('Dompdf\Dompdf')) {
     $tcpdf_available = true;
 }
 
@@ -77,11 +79,13 @@ function generateSummaryReport($conn, $filters, &$report_data) {
             SUM(CASE WHEN ar.status = 'Present' THEN 1 ELSE 0 END) as present_count,
             SUM(CASE WHEN ar.status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
             SUM(CASE WHEN ar.status = 'Late' THEN 1 ELSE 0 END) as late_count,
-            ROUND(
-                (SUM(CASE WHEN ar.status = 'Present' THEN 1 ELSE 0 END) +
-                 SUM(CASE WHEN ar.status = 'Late' THEN 0.5 ELSE 0 END)) /
-                COUNT(ar.attendance_id) * 100, 1
-            ) as attendance_percentage
+            COALESCE(ROUND(
+                CASE WHEN COUNT(ar.attendance_id) > 0 THEN
+                    (SUM(CASE WHEN ar.status = 'Present' THEN 1 ELSE 0 END) +
+                     SUM(CASE WHEN ar.status = 'Late' THEN 0.5 ELSE 0 END)) /
+                    COUNT(ar.attendance_id) * 100
+                ELSE 0 END, 1
+            ), 0) as attendance_percentage
         FROM students st
         LEFT JOIN attendance_records ar ON st.student_id = ar.student_id
         LEFT JOIN class_sessions cs ON ar.session_id = cs.session_id
@@ -396,117 +400,47 @@ function generateLecturerReport($conn, $filters, &$report_data) {
     }
 }
 
-function generatePDF($report_data) {
-    global $tcpdf_available;
+// Handle CSV download before any output
+if (isset($_POST['download']) && $_POST['download'] === 'csv') {
+    // Send CSV headers
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="attendance_report_' . date('Y-m-d') . '.csv"');
 
-    if (!$tcpdf_available) {
-        throw new Exception("PDF generation is not available. Please install TCPDF library.");
-    }
+    // Generate report data first
+    generateReportData($conn, $filters, $report_data);
 
-    require_once '../vendor/tecnickcom/tcpdf/tcpdf.php';
+    $output = fopen('php://output', 'w');
 
-    $pdf = new TCPDF();
-    $pdf->SetCreator('SUNATT');
-    $pdf->SetAuthor('SUNATT System');
-    $pdf->SetTitle($report_data['title']);
-    $pdf->SetMargins(10, 10, 10);
-    $pdf->AddPage();
-    $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 10, $report_data['title'], 0, 1, 'C');
-    $pdf->Ln(5);
-
-    if ($report_data['type'] === 'summary') {
-        $pdf->SetFont('helvetica', 'B', 12);
-        $pdf->Cell(0, 10, 'Summary Statistics', 0, 1);
-        $pdf->SetFont('helvetica', '', 10);
-        $pdf->Cell(0, 8, "Total Sessions: " . $report_data['summary']['total_sessions'], 0, 1);
-        $pdf->Cell(0, 8, "Total Present: " . $report_data['summary']['total_present'], 0, 1);
-        $pdf->Cell(0, 8, "Total Absent: " . $report_data['summary']['total_absent'], 0, 1);
-        $pdf->Cell(0, 8, "Total Late: " . $report_data['summary']['total_late'], 0, 1);
-        $pdf->Cell(0, 8, "Overall Attendance: " . $report_data['summary']['overall_percentage'] . "%", 0, 1);
-        $pdf->Ln(5);
-
-        $html = '<table border="1" cellpadding="3"><tr><th>Student Name</th><th>Reg. No.</th><th>Sessions</th><th>Present</th><th>Absent</th><th>Late</th><th>Attendance %</th></tr>';
+    // CSV headers based on report type
+    if ($filters['report_type'] === 'summary') {
+        fputcsv($output, ['Student Name', 'Registration No.', 'Total Sessions', 'Present', 'Absent', 'Late', 'Attendance %']);
         foreach ($report_data['records'] as $row) {
-            $html .= "<tr>
-                <td>" . htmlspecialchars($row['student_name']) . "</td>
-                <td>" . htmlspecialchars($row['registration_number']) . "</td>
-                <td>" . $row['total_sessions'] . "</td>
-                <td>" . $row['present_count'] . "</td>
-                <td>" . $row['absent_count'] . "</td>
-                <td>" . $row['late_count'] . "</td>
-                <td>" . $row['attendance_percentage'] . "%</td>
-            </tr>";
+            fputcsv($output, [
+                $row['student_name'],
+                $row['registration_number'],
+                $row['total_sessions'],
+                $row['present_count'],
+                $row['absent_count'],
+                $row['late_count'],
+                number_format($row['attendance_percentage'], 1) . '%'
+            ]);
         }
-        $html .= '</table>';
     } else {
-        $html = '<table border="1" cellpadding="3"><tr><th>Student Name</th><th>Reg. No.</th><th>Unit</th><th>Status</th><th>Date</th><th>Lecturer</th></tr>';
+        fputcsv($output, ['Student Name', 'Registration No.', 'Unit Code', 'Unit Name', 'Status', 'Date', 'Lecturer']);
         foreach ($report_data['records'] as $row) {
-            $html .= "<tr>
-                <td>" . htmlspecialchars($row['student_name'] ?? $row['username']) . "</td>
-                <td>" . htmlspecialchars($row['registration_number'] ?? $row['staff_number']) . "</td>
-                <td>" . htmlspecialchars($row['unit_code'] . ' - ' . $row['unit_name']) . "</td>
-                <td>" . htmlspecialchars($row['status']) . "</td>
-                <td>" . date('Y-m-d H:i', strtotime($row['marked_at'])) . "</td>
-                <td>" . htmlspecialchars($row['lecturer_name'] ?? '') . "</td>
-            </tr>";
+            fputcsv($output, [
+                $row['student_name'] ?? $row['username'],
+                $row['registration_number'] ?? $row['staff_number'],
+                $row['unit_code'],
+                $row['unit_name'],
+                $row['status'],
+                date('Y-m-d H:i', strtotime($row['marked_at'])),
+                $row['lecturer_name'] ?? ''
+            ]);
         }
-        $html .= '</table>';
     }
-
-    $pdf->writeHTML($html, true, false, true, false, '');
-    $pdf->Output('attendance_report_' . date('Y-m-d') . '.pdf', 'D');
-}
-
-// Handle CSV/PDF download before any output
-if (isset($_POST['download'])) {
-    try {
-        // Generate report data first
-        generateReportData($conn, $filters, $report_data);
-
-        if ($_POST['download'] === 'csv') {
-            // Send CSV headers
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="attendance_report_' . date('Y-m-d') . '.csv"');
-            $output = fopen('php://output', 'w');
-
-            // CSV headers based on report type
-            if ($filters['report_type'] === 'summary') {
-                fputcsv($output, ['Student Name', 'Registration No.', 'Total Sessions', 'Present', 'Absent', 'Late', 'Attendance %']);
-                foreach ($report_data['records'] as $row) {
-                    fputcsv($output, [
-                        $row['student_name'],
-                        $row['registration_number'],
-                        $row['total_sessions'],
-                        $row['present_count'],
-                        $row['absent_count'],
-                        $row['late_count'],
-                        number_format($row['attendance_percentage'], 1) . '%'
-                    ]);
-                }
-            } else {
-                fputcsv($output, ['Student Name', 'Registration No.', 'Unit Code', 'Unit Name', 'Status', 'Date', 'Lecturer']);
-                foreach ($report_data['records'] as $row) {
-                    fputcsv($output, [
-                        $row['student_name'] ?? $row['username'],
-                        $row['registration_number'] ?? $row['staff_number'],
-                        $row['unit_code'],
-                        $row['unit_name'],
-                        $row['status'],
-                        date('Y-m-d H:i', strtotime($row['marked_at'])),
-                        $row['lecturer_name'] ?? ''
-                    ]);
-                }
-            }
-            fclose($output);
-            exit;
-        } elseif ($_POST['download'] === 'pdf') {
-            generatePDF($report_data);
-            exit;
-        }
-    } catch (Exception $e) {
-        $report_data['error'] = "Error generating download: " . $e->getMessage();
-    }
+    fclose($output);
+    exit;
 }
 
 // Generate report data
@@ -659,34 +593,7 @@ try {
     $report_data['error'] = "Error fetching data: " . $e->getMessage();
 }
 
-// Handle PDF download
-if (isset($_POST['download']) && $_POST['download'] === 'pdf') {
-    $pdf = new TCPDF();
-    $pdf->SetCreator(PDF_CREATOR);
-    $pdf->SetAuthor('SUNATT');
-    $pdf->SetTitle($report_data['title']);
-    $pdf->SetMargins(10, 10, 10);
-    $pdf->AddPage();
-    $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 10, $report_data['title'], 0, 1, 'C');
-    $pdf->Ln(5);
-    $pdf->SetFont('helvetica', '', 10);
 
-    $html = '<table border="1" cellpadding="5"><tr><th>Username</th><th>Reg/Staff No.</th><th>Unit</th><th>Status</th><th>Date</th></tr>';
-    foreach ($report_data['records'] as $row) {
-        $html .= "<tr>
-            <td>" . htmlspecialchars($row['username']) . "</td>
-            <td>" . htmlspecialchars($row['registration_number'] ?? $row['staff_number']) . "</td>
-            <td>" . htmlspecialchars($row['unit_code'] . ' - ' . $row['unit_name']) . "</td>
-            <td>" . htmlspecialchars($row['status']) . "</td>
-            <td>" . date('Y-m-d H:i', strtotime($row['marked_at'])) . "</td>
-        </tr>";
-    }
-    $html .= '</table>';
-    $pdf->writeHTML($html, true, false, true, false, '');
-    $pdf->Output('attendance_report.pdf', 'D');
-    exit;
-}
 ?>
 
 <!-- Rest of the HTML and JavaScript remains unchanged -->
@@ -700,6 +607,7 @@ if (isset($_POST['download']) && $_POST['download'] === 'pdf') {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
     <main class="container mx-auto p-8">
@@ -847,11 +755,7 @@ if (isset($_POST['download']) && $_POST['download'] === 'pdf') {
 
             <div class="flex space-x-4">
                 <button type="submit" class="px-6 py-2 bg-yellow-400 text-gray-900 rounded hover:bg-yellow-300 font-semibold">Generate Report</button>
-                <?php if ($tcpdf_available): ?>
-                <button type="submit" name="download" value="pdf" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 font-semibold">Download PDF</button>
-                <?php else: ?>
-                <button type="button" class="px-6 py-2 bg-gray-600 text-white rounded cursor-not-allowed font-semibold" title="PDF generation not available - TCPDF library not installed" disabled>PDF (Not Available)</button>
-                <?php endif; ?>
+                <button type="button" onclick="downloadPDF()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 font-semibold">Download PDF</button>
                 <button type="submit" name="download" value="csv" class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-500 font-semibold">Download CSV</button>
             </div>
         </form>
@@ -941,14 +845,14 @@ if (isset($_POST['download']) && $_POST['download'] === 'pdf') {
                         <?php foreach ($report_data['records'] as $row): ?>
                         <tr class="border-b border-gray-600 hover:bg-gray-700">
                             <?php if ($filters['report_type'] === 'summary'): ?>
-                                <td class="p-3"><?= htmlspecialchars($row['student_name']) ?></td>
-                                <td class="p-3"><?= htmlspecialchars($row['registration_number']) ?></td>
-                                <td class="p-3"><?= $row['total_sessions'] ?></td>
-                                <td class="p-3 text-green-400"><?= $row['present_count'] ?></td>
-                                <td class="p-3 text-red-400"><?= $row['absent_count'] ?></td>
-                                <td class="p-3 text-yellow-400"><?= $row['late_count'] ?></td>
-                                <td class="p-3 font-semibold <?= $row['attendance_percentage'] >= 75 ? 'text-green-400' : ($row['attendance_percentage'] >= 60 ? 'text-yellow-400' : 'text-red-400') ?>">
-                                    <?= number_format($row['attendance_percentage'], 1) ?>%
+                                <td class="p-3"><?= htmlspecialchars($row['student_name'] ?? 'N/A') ?></td>
+                                <td class="p-3"><?= htmlspecialchars($row['registration_number'] ?? 'N/A') ?></td>
+                                <td class="p-3"><?= $row['total_sessions'] ?? 0 ?></td>
+                                <td class="p-3 text-green-400"><?= $row['present_count'] ?? 0 ?></td>
+                                <td class="p-3 text-red-400"><?= $row['absent_count'] ?? 0 ?></td>
+                                <td class="p-3 text-yellow-400"><?= $row['late_count'] ?? 0 ?></td>
+                                <td class="p-3 font-semibold <?= ($row['attendance_percentage'] ?? 0) >= 75 ? 'text-green-400' : (($row['attendance_percentage'] ?? 0) >= 60 ? 'text-yellow-400' : 'text-red-400') ?>">
+                                    <?= number_format($row['attendance_percentage'] ?? 0, 1) ?>%
                                 </td>
                             <?php elseif ($filters['report_type'] === 'student_detail'): ?>
                                 <td class="p-3 font-mono"><?= htmlspecialchars($row['unit_code']) ?></td>
@@ -1074,6 +978,19 @@ if (isset($_POST['download']) && $_POST['download'] === 'pdf') {
                 scales: { y: { beginAtZero: true } }
             }
         });
+
+        // PDF Download function
+        function downloadPDF() {
+            const element = document.querySelector('body'); // Or more specific: '.bg-gray-800.rounded-lg.shadow.p-6' for the table container
+            const opt = {
+                margin: 0.5,
+                filename: 'attendance_report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
     </script>
 </body>
 </html>

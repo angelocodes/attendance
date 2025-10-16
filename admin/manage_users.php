@@ -299,8 +299,13 @@ $result = $stmt->get_result();
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Manage Users</title>
+    <title>Manage Users | SUNATT</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+        }
+    </style>
     <script defer src="../face-api.min.js"></script>
     <style>
         .modal-bg {
@@ -353,8 +358,8 @@ $result = $stmt->get_result();
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 p-8 min-h-screen">
-    <h1 class="text-3xl font-bold mb-6 text-red-600">Manage Users</h1>
+<body class="bg-gray-900 text-white p-8 min-h-screen">
+    <h1 class="text-3xl font-bold mb-6 text-yellow-400">Manage Users</h1>
 
     <form method="GET" class="mb-6 flex gap-2 max-w-md">
         <input type="text" name="search" placeholder="Search users..." value="<?= htmlspecialchars($search) ?>"
@@ -362,8 +367,8 @@ $result = $stmt->get_result();
         <button type="submit" class="bg-red-600 text-white font-bold px-4 rounded hover:bg-red-500">Search</button>
     </form>
 
-    <div class="mb-10 bg-white p-6 rounded shadow max-w-lg">
-        <h2 class="text-xl font-semibold mb-4 text-red-600">Add New User</h2>
+    <div class="mb-10 bg-gray-700 p-6 rounded shadow max-w-lg">
+        <h2 class="text-xl font-semibold mb-4 text-yellow-400">Add New User</h2>
 
         <?php if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])): ?>
             <div class="mb-4 bg-red-100 border border-red-500 text-red-700 p-3 rounded">
@@ -453,16 +458,16 @@ $result = $stmt->get_result();
     </div>
 
     <div class="overflow-x-auto">
-        <table class="min-w-full bg-white rounded-lg shadow divide-y">
-            <thead>
+        <table class="min-w-full bg-gray-800 rounded-lg shadow divide-y divide-gray-700">
+            <thead class="bg-gray-700">
                 <tr>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Name</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Username</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Email</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Phone</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">User Type</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Face Encoding</th>
-                    <th class="px-4 py-3 text-left text-blue-600 font-semibold">Actions</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Name</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Username</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Email</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Phone</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">User Type</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Face Encoding</th>
+                    <th class="px-4 py-3 text-left text-yellow-400 font-semibold">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y">
@@ -577,14 +582,18 @@ $result = $stmt->get_result();
     </div>
 
     <div class="mt-4 flex justify-between items-center">
-        <span class="text-sm text-gray-600">Page <?= $page ?> of <?= $total_pages ?></span>
+        <span class="text-sm text-gray-400">Page <?= $page ?> of <?= $total_pages ?></span>
         <div class="space-x-2">
             <a href="?page=<?= $page - 1 ?>&search=<?= htmlspecialchars($search) ?>"
-               class="px-3 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 <?= $page <= 1 ? 'hidden' : '' ?>">Previous</a>
+               class="px-3 py-2 rounded bg-gray-700 text-white hover:bg-gray-600 <?= $page <= 1 ? 'hidden' : '' ?>">Previous</a>
             <a href="?page=<?= $page + 1 ?>&search=<?= htmlspecialchars($search) ?>"
-               class="px-3 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 <?= $page >= $total_pages ? 'hidden' : '' ?>">Next</a>
+               class="px-3 py-2 rounded bg-gray-700 text-white hover:bg-gray-600 <?= $page >= $total_pages ? 'hidden' : '' ?>">Next</a>
         </div>
     </div>
+
+<footer class="bg-gray-800 text-center py-4 mt-8">
+    <p>© <?= date('Y') ?> SUNATT | Soroti University Attendance System</p>
+</footer>
 
     <script>
         let faceApiLoaded = false;

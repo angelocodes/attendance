@@ -159,29 +159,29 @@ if (isset($_POST['section'])) {
         ob_start();
         ?>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="bg-white p-4 rounded shadow">
-            <h3 class="text-sm font-semibold text-gray-500">Enrolled Units</h3>
+          <div class="bg-gray-800 p-4 rounded shadow">
+            <h3 class="text-sm font-semibold text-gray-300">Enrolled Units</h3>
             <div class="mt-2 flex items-center justify-between">
               <div>
-                <p class="text-2xl font-bold text-sky-600"><?= h($enrolled_units) ?></p>
-                <p class="text-sm text-gray-500">Active this semester</p>
+                <p class="text-2xl font-bold text-yellow-400"><?= h($enrolled_units) ?></p>
+                <p class="text-sm text-gray-300">Active this semester</p>
               </div>
-              <div class="text-4xl text-gray-200"><i class="fa fa-book"></i></div>
+              <div class="text-4xl text-gray-400"><i class="fa fa-book"></i></div>
             </div>
           </div>
 
-          <div class="bg-white p-4 rounded shadow">
-            <h3 class="text-sm font-semibold text-gray-500">Overall Attendance</h3>
+          <div class="bg-gray-800 p-4 rounded shadow">
+            <h3 class="text-sm font-semibold text-gray-300">Overall Attendance</h3>
             <div class="mt-3">
-              <div class="w-full bg-gray-200 rounded h-3 overflow-hidden">
+              <div class="w-full bg-gray-600 rounded h-3 overflow-hidden">
                 <div style="width:<?= $attendance_rate ?>%" class="h-3 bg-emerald-400"></div>
               </div>
-              <p class="mt-2 text-sm font-medium"><?= $attendance_rate ?>% present</p>
+              <p class="mt-2 text-sm font-medium text-white"><?= $attendance_rate ?>% present</p>
             </div>
           </div>
 
-          <div class="bg-white p-4 rounded shadow">
-            <h3 class="text-sm font-semibold text-gray-500">Upcoming Sessions</h3>
+          <div class="bg-gray-800 p-4 rounded shadow">
+            <h3 class="text-sm font-semibold text-gray-300">Upcoming Sessions</h3>
             <div class="mt-2">
               <?php if ($upcoming->num_rows): ?>
                 <ul class="space-y-2">
@@ -199,8 +199,8 @@ if (isset($_POST['section'])) {
         </div>
 
         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-white p-4 rounded shadow">
-            <h4 class="font-semibold text-gray-700 mb-2">Recent Attendance</h4>
+          <div class="bg-gray-800 p-4 rounded shadow">
+            <h4 class="font-semibold text-yellow-400 mb-2">Recent Attendance</h4>
             <?php if ($recent_att->num_rows): ?>
               <ul class="space-y-2 text-sm">
                 <?php while($r = $recent_att->fetch_assoc()):
@@ -214,18 +214,18 @@ if (isset($_POST['section'])) {
             <?php endif; ?>
           </div>
 
-          <div class="bg-white p-4 rounded shadow">
-            <h4 class="font-semibold text-gray-700 mb-2">Recent Notifications</h4>
+          <div class="bg-gray-800 p-4 rounded shadow">
+            <h4 class="font-semibold text-yellow-400 mb-2">Recent Notifications</h4>
             <?php if ($recent_notif->num_rows): ?>
               <ul class="space-y-2 text-sm">
                 <?php while($n = $recent_notif->fetch_assoc()): ?>
-                  <li class="p-2 border rounded bg-gray-50">
-                    <?= h($n['message']) ?> <div class="text-xs text-gray-400 mt-1"><?= h($n['created_at']) ?> <?= $n['unit_name'] ? ' • '.h($n['unit_name']) : '' ?></div>
+                  <li class="p-2 border rounded bg-gray-700 text-white">
+                    <?= h($n['message']) ?> <div class="text-xs text-gray-300 mt-1"><?= h($n['created_at']) ?> <?= $n['unit_name'] ? ' • '.h($n['unit_name']) : '' ?></div>
                   </li>
                 <?php endwhile; ?>
               </ul>
             <?php else: ?>
-              <p class="text-sm text-gray-500">No notifications</p>
+              <p class="text-sm text-gray-300">No notifications</p>
             <?php endif; ?>
           </div>
         </div>
@@ -421,6 +421,25 @@ if (isset($_POST['section'])) {
         exit;
     }
 
+    // 6.5) Reports (download attendance CSV)
+    if ($section === 'reports') {
+        ob_start();
+        ?>
+        <h3 class="font-semibold mb-2">Download Attendance Report</h3>
+        <p class="text-sm text-gray-500 mb-4">Export your attendance records as a CSV file for offline analysis.</p>
+        <form method="POST" target="_blank" action="api.php">
+            <input type="hidden" name="action" value="download_csv">
+            <div class="mb-3">
+                <label class="text-sm text-gray-600 block">Search/Filter (unit name, code, status, date):</label>
+                <input name="q" type="text" placeholder="e.g., present, Digital Systems" class="w-full p-2 border rounded" />
+            </div>
+            <button type="submit" class="px-4 py-2 bg-sky-600 text-white rounded hover:bg-sky-500">Download CSV Report</button>
+        </form>
+        <?php
+        echo ob_get_clean();
+        exit;
+    }
+
     // 7) Notifications (searchable) and mark as read
     if ($section === 'notifications') {
         $q = trim($_POST['q'] ?? '');
@@ -469,34 +488,33 @@ if (isset($_POST['section'])) {
         ob_start();
         ?>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="bg-white p-4 rounded shadow">
-            <h4 class="font-semibold text-sky-600 mb-2">Personal Info</h4>
+          <div class="bg-gray-700 p-4 rounded shadow">
+            <h4 class="font-semibold text-yellow-400 mb-2">Personal Info</h4>
             <form id="profileForm" onsubmit="saveProfile(event)">
               <div class="mb-2">
-                <label class="text-sm text-gray-600">First name</label>
-                <input name="first_name" value="<?= h($profile['first_name'] ?? '') ?>" class="w-full p-2 border rounded" />
+                <label class="text-sm text-gray-300">First name</label>
+                <input name="first_name" value="<?= h($profile['first_name'] ?? '') ?>" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded" />
               </div>
               <div class="mb-2">
-                <label class="text-sm text-gray-600">Last name</label>
-                <input name="last_name" value="<?= h($profile['last_name'] ?? '') ?>" class="w-full p-2 border rounded" />
+                <label class="text-sm text-gray-300">Last name</label>
+                <input name="last_name" value="<?= h($profile['last_name'] ?? '') ?>" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded" />
               </div>
               <div class="mb-2">
-                <label class="text-sm text-gray-600">Email</label>
-                <input name="email" value="<?= h($profile['email'] ?? '') ?>" class="w-full p-2 border rounded" />
+                <label class="text-sm text-gray-300">Email</label>
+                <input name="email" value="<?= h($profile['email'] ?? '') ?>" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded" />
               </div>
               <div class="mb-2">
-                <label class="text-sm text-gray-600">Phone</label>
-                <input name="phone_number" value="<?= h($profile['phone_number'] ?? '') ?>" class="w-full p-2 border rounded" />
+                <label class="text-sm text-gray-300">Phone</label>
+                <input name="phone_number" value="<?= h($profile['phone_number'] ?? '') ?>" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded" />
               </div>
               <div class="flex gap-2 mt-3">
-                <button class="px-3 py-2 bg-sky-600 text-white rounded">Save profile</button>
-                <button type="button" onclick="showPasswordChange()" class="px-3 py-2 border rounded">Change password</button>
-              </div>
+                <button class="px-3 py-2 bg-yellow-400 text-black rounded">Save profile</button>
+  </div>
             </form>
           </div>
 
-          <div class="bg-white p-4 rounded shadow">
-            <h4 class="font-semibold text-sky-600 mb-2">Student Details</h4>
+          <div class="bg-gray-700 p-4 rounded shadow">
+            <h4 class="font-semibold text-yellow-400 mb-2">Student Details</h4>
             <p class="text-sm"><strong>Registration No:</strong> <?= h($profile['registration_number'] ?? 'N/A') ?></p>
             <p class="text-sm"><strong>Course:</strong> <?= h($profile['course_name'] ?? 'N/A') ?></p>
 
@@ -561,7 +579,7 @@ if (isset($_POST['action'])) {
         $stmt = $conn->prepare("UPDATE students SET first_name = ?, last_name = ? WHERE student_id = ?");
         $stmt->bind_param("ssi", $first, $last, $student_id); $stmt->execute();
 
-        echo 'Profile updated';
+        echo 'Profile updated successfully';
         exit;
     }
 
@@ -582,7 +600,7 @@ if (isset($_POST['action'])) {
         $hash = password_hash($new, PASSWORD_DEFAULT);
         $stmt = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
         $stmt->bind_param("si", $hash, $student_id); $stmt->execute();
-        echo 'Password changed';
+        echo 'Password changed successfully';
         exit;
     }
 }

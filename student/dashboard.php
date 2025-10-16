@@ -78,18 +78,48 @@ $student_name = htmlspecialchars($student['first_name'] . ' ' . $student['last_n
       xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
       xhr.onload = function () {
         alert(xhr.responseText);
-        if (xhr.responseText.includes('success')) {
+        if (xhr.responseText.includes('successfully')) {
           closePasswordModal();
           document.getElementById('current_password').value = '';
           document.getElementById('new_password').value = '';
           document.getElementById('confirm_password').value = '';
         }
       };
-      xhr.send(`action=change_password&current=${encodeURIComponent(current)}&new=${encodeURIComponent(newPass)}`);
+      xhr.send(`action=change_password&current_password=${encodeURIComponent(current)}&new_password=${encodeURIComponent(newPass)}&confirm_password=${encodeURIComponent(confirm)}`);
     }
+
+    // Global functions for profile section
+    function saveProfile(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd.entries());
+      data.action = 'update_profile';
+      fetch('api.php', {method:'POST', body: new URLSearchParams(data)})
+        .then(r => r.text())
+        .then(txt => {
+          alert(txt);
+          loadSection('profile');
+        });
+    }
+
+    function changePasswordInProfile(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = Object.fromEntries(fd.entries());
+      data.action = 'change_password';
+      fetch('api.php', {method:'POST', body: new URLSearchParams(data)})
+        .then(r => r.text())
+        .then(txt => {
+          alert(txt);
+          hidePasswordChange();
+        });
+    }
+
+    function showPasswordChange() { document.getElementById('pwdChange').classList.remove('hidden'); }
+    function hidePasswordChange() { document.getElementById('pwdChange').classList.add('hidden'); }
   </script>
 </head>
-<body class="bg-gray-100 text-gray-900">
+<body class="bg-gray-900 text-white">
 
 <!-- NAVBAR -->
 <nav class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-md sticky top-0 z-50">
@@ -135,20 +165,20 @@ $student_name = htmlspecialchars($student['first_name'] . ' ' . $student['last_n
 </nav>
 
 <div class="container mx-auto p-6">
-  <h1 class="text-3xl font-bold mb-6 text-blue-600">Welcome, <?php echo $student_name; ?>!</h1>
-  <div id="content" class="bg-white p-6 rounded shadow"></div>
+  <h1 class="text-3xl font-bold mb-6 text-yellow-400">Welcome, <?php echo $student_name; ?>!</h1>
+  <div id="content" class="bg-gray-700 p-6 rounded shadow"></div>
 </div>
 
 <!-- Password Change Modal -->
 <div id="passwordModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-lg shadow-lg w-96 p-6 relative">
-    <h2 class="text-xl font-semibold mb-4">Change Password</h2>
-    <input type="password" id="current_password" placeholder="Current Password" class="w-full p-2 border rounded mb-3">
-    <input type="password" id="new_password" placeholder="New Password" class="w-full p-2 border rounded mb-3">
-    <input type="password" id="confirm_password" placeholder="Confirm New Password" class="w-full p-2 border rounded mb-4">
+  <div class="bg-gray-800 rounded-lg shadow-lg w-96 p-6 relative">
+    <h2 class="text-xl font-semibold mb-4 text-yellow-400">Change Password</h2>
+    <input type="password" id="current_password" placeholder="Current Password" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded mb-3">
+    <input type="password" id="new_password" placeholder="New Password" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded mb-3">
+    <input type="password" id="confirm_password" placeholder="Confirm New Password" class="w-full p-2 bg-gray-600 border border-gray-500 text-white rounded mb-4">
     <div class="flex justify-end space-x-3">
-      <button onclick="closePasswordModal()" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button>
-      <button onclick="changePassword()" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      <button onclick="closePasswordModal()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Cancel</button>
+      <button onclick="changePassword()" class="px-4 py-2 bg-yellow-400 text-black rounded hover:bg-yellow-500">Save</button>
     </div>
   </div>
 </div>
