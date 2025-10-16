@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message = "Please enter a valid email address.";
         $messageType = 'error';
     } else {
-        // Check if user exists by email
+        // Check if user exists by email in users table
         $stmt = $conn->prepare("SELECT user_id FROM users WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -24,8 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $user = $result->fetch_assoc();
             $user_id = $user['user_id'];
 
-            // Now get user details from appropriate table (student or lecturer)
-            $userStmt = $conn->prepare("SELECT user_id, first_name, last_name FROM students WHERE user_id = ? UNION SELECT user_id, first_name, last_name FROM lecturers WHERE user_id = ?");
+            // Get user full name from appropriate table (student or lecturer)
+            $userStmt = $conn->prepare("
+                SELECT CONCAT(first_name, ' ', last_name) as full_name
+                FROM students WHERE user_id = ?
+                UNION
+                SELECT CONCAT(first_name, ' ', last_name) as full_name
+                FROM lecturers WHERE user_id = ?
+                LIMIT 1
+            ");
             $userStmt->bind_param("ii", $user_id, $user_id);
             $userStmt->execute();
             $userResult = $userStmt->get_result();
