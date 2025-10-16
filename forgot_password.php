@@ -44,13 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $mail->isSMTP();
                 $mail->Host = 'smtp.gmail.com'; // Replace with your SMTP server
                 $mail->SMTPAuth = true;
-                $mail->Username = 'your-email@gmail.com'; // Replace with your email
-                $mail->Password = 'your-app-password'; // Replace with app password
+                $mail->Username = 'deliveredmilly@gmail.com'; // Your Gmail address
+                $mail->Password = 'Sept@2024@'; // Your Gmail app password
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port = 587;
 
                 // Recipients
-                $mail->setFrom('your-email@gmail.com', 'Attendance System'); // Replace with your email
+                $mail->setFrom('deliveredmilly@gmail.com', 'Attendance System'); // Your Gmail address
                 $mail->addAddress($email);
 
                 // Content
